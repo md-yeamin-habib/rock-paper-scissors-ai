@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+
+    <div class="game-container">
+        <div id="home-screen" class="screen active">
+            <div class="logo-banner">
+                <h1>ROCK PAPER SCISSORS</h1>
+                <p>THE CLASSIC GAME</p>
+            </div>
+
+            <div class="menu-card">
+                <div class="menu-section">
+                    <h3>SELECT OPPONENT</h3>
+                    <div class="option-grid">
+                        <button class="menu-btn game-mode-btn active" data-mode="computer">
+                            <div class="btn-icon-box">
+                                <img src="/static/assets/icons/computer.png" alt="Computer" class="mode-icon">
+                            </div>
+                            <span class="btn-label">Player vs Computer</span>
+                        </button>
+                        
+                        <button class="menu-btn game-mode-btn" data-mode="adaptive_ai">
+                            <div class="btn-icon-box">
+                                <img src="/static/assets/icons/ai.png" alt="Adaptive AI" class="mode-icon">
+                            </div>
+                            <span class="btn-label">Player vs Adaptive AI</span>
+                        </button>
+
+                        <button class="menu-btn game-mode-btn" data-mode="pvp">
+                            <div class="btn-icon-box">
+                                <img src="/static/assets/icons/pvp.png" alt="Player vs Player" class="mode-icon">
+                            </div>
+                            <span class="btn-label">Player vs Player</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <h3>SELECT ROUND MODE</h3>
+                    <div class="option-grid">
+                        <button class="menu-btn round-btn active" data-rounds="3">
+                            <div class="btn-icon-box">
+                                <img src="/static/assets/icons/circle3.png" alt="Best of 3" class="mode-icon">
+                            </div>
+                            <span class="btn-label">Best of 3</span>
+                        </button>
+                        
+                        <button class="menu-btn round-btn" data-rounds="5">
+                            <div class="btn-icon-box">
+                                <img src="/static/assets/icons/circle5.png" alt="Best of 5" class="mode-icon">
+                            </div>
+                            <span class="btn-label">Best of 5</span>
+                        </button>
+
+                        <button class="menu-btn round-btn" data-rounds="999">
+                            <div class="btn-icon-box">
+                                <img src="/static/assets/icons/circle10.png" alt="Endless" class="mode-icon">
+                            </div>
+                            <span class="btn-label">Endless</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="start-game-btn" class="cta-btn">START GAME</button>
+            </div>
+        </div>
+
+        <div id="game-screen" class="screen">
+            <button id="quit-btn" class="quit-x-btn" title="Quit Match">✕</button>
+
+            <div class="battle-stage">
+                <div class="combatant-hud opponent-hud">
+                    <div class="hud-box">
+                        <div class="hud-info">
+                            <span id="opponent-name" class="hud-name">Player 2</span>
+                            <div id="opponent-timer" class="circular-timer hidden">
+                                <svg class="timer-svg" viewBox="0 0 36 36">
+                                    <path class="timer-path-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path id="opponent-timer-path" class="timer-path-bar" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                </svg>
+                                <span id="opponent-timer-val" class="timer-number">10</span>
+                            </div>
+                        </div>
+                        <div id="opponent-score-track" class="score-track"></div>
+                    </div>
+                </div>
+                <div class="sprite-container opponent-sprite-box">
+                    <div class="floor-rug blue-rug"></div>
+                    <img id="opponent-hand-img" src="/static/assets/opponent/idle/00.png" alt="Opponent Hand" class="hand-sprite">
+                </div>
+
+                <div class="combatant-hud player-hud">
+                    <div class="hud-box">
+                        <div class="hud-info">
+                            <span id="player-name" class="hud-name">Player 1 (You)</span>
+                            <div id="player-timer" class="circular-timer hidden">
+                                <svg class="timer-svg" viewBox="0 0 36 36">
+                                    <path class="timer-path-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path id="player-timer-path" class="timer-path-bar" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                </svg>
+                                <span id="player-timer-val" class="timer-number">10</span>
+                            </div>
+                        </div>
+                        <div id="player-score-track" class="score-track"></div>
+                    </div>
+                </div>
+                <div class="sprite-container player-sprite-box">
+                    <div class="floor-rug red-rug"></div>
+                    <img id="player-hand-img" src="/static/assets/player/idle/00.png" alt="Player Hand" class="hand-sprite">
+                </div>
+            </div>
+
+            <div class="battle-control-panel">
+                <span class="action-prompt">Choose your move:</span>
+                <div class="move-buttons-group">
+                    <button class="move-btn" data-move="rock" title="Rock">
+                        <i class="fa-solid fa-hand-rock move-icon"></i>
+                    </button>
+                    <button class="move-btn" data-move="paper" title="Paper">
+                        <i class="fa-solid fa-hand-paper move-icon"></i>
+                    </button>
+                    <button class="move-btn" data-move="scissor" title="Scissors">
+                        <i class="fa-solid fa-hand-scissors move-icon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="waiting-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="spinner"></div>
+                <h2>WAITING FOR OPPONENT</h2>
+                <p id="waiting-timer-text">Searching for player... (<span id="countdown-val">120</span>s)</p>
+                <button id="cancel-waiting-btn" class="danger-btn">CANCEL</button>
+            </div>
+        </div>
+
+        <div id="quit-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <h2>EXIT MATCH?</h2>
+                <p>Are you sure you want to exit the current match?</p>
+                <div class="modal-btn-group">
+                    <button id="confirm-quit-btn" class="danger-btn">YES</button>
+                    <button id="cancel-quit-btn" class="secondary-btn">NO</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="match-over-modal" class="modal-overlay hidden">
+            <div class="modal-content scorecard-modal-content">
+                <h2 id="scorecard-title">MATCH OVER</h2>
+                <table class="scorecard-table">
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Wins</th>
+                            <th>Draws</th>
+                            <th>Losses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td id="sc-row1-label">Player 1</td>
+                            <td id="sc-row1-wins">0</td>
+                            <td id="sc-row1-draws">0</td>
+                            <td id="sc-row1-losses">0</td>
+                        </tr>
+                        <tr>
+                            <td id="sc-row2-label">Player 2</td>
+                            <td id="sc-row2-wins">0</td>
+                            <td id="sc-row2-draws">0</td>
+                            <td id="sc-row2-losses">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div id="scorecard-winner-banner" class="winner-banner">Player 1 Wins!</div>
+                <div class="modal-btn-group">
+                    <button id="scorecard-restart-btn" class="scorecard-btn primary">
+                        PLAY AGAIN <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button id="scorecard-home-btn" class="scorecard-btn secondary">
+                        HOME <i class="fa-solid fa-house"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
