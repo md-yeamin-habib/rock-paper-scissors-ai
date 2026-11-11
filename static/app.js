@@ -1,24 +1,17 @@
-// Establish Socket.IO connection to the backend server
 const socket = io();
 
-// UI State tracking variables
 let selectedGameMode = 'computer';
 let selectedRoundMode = '3';
 let waitingTimerInterval = null;
 let currentAnimationInterval = null;
 let activeTimerInterval = null;
 
-// Room and Role state for matches
 let currentRoom = null;
 let currentRole = 'p1';
 let isAnimating = false;
 
-// Round history tracking for score pills
 let roundHistory = [];
 
-// ==========================================
-// CENTRALIZED ASSET CACHE & PRELOADER
-// ==========================================
 const assetCache = {};
 
 function preloadAllAssets() {
@@ -44,7 +37,6 @@ function preloadAllAssets() {
 document.addEventListener('DOMContentLoaded', () => {
     preloadAllAssets();
 
-    // 1. Handle Game Mode selection buttons
     const modeButtons = document.querySelectorAll('.game-mode-btn');
     modeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -53,8 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedGameMode = btn.getAttribute('data-mode');
         });
     });
-
-    // 2. Handle Round Mode selection buttons
     const roundButtons = document.querySelectorAll('.round-btn');
     roundButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -64,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 3. Handle Start Game Button click
     const startBtn = document.getElementById('start-game-btn');
     startBtn.addEventListener('click', () => {
         if (selectedGameMode === 'pvp') {
@@ -77,14 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 4. Handle Cancel Waiting Button in PvP Modal
     const cancelWaitingBtn = document.getElementById('cancel-waiting-btn');
     cancelWaitingBtn.addEventListener('click', () => {
         hideWaitingModal();
         window.location.reload();
     });
 
-    // 5. Handle Quit Button & Confirmation Modal
     const quitBtn = document.getElementById('quit-btn');
     const quitModal = document.getElementById('quit-modal');
     const confirmQuitBtn = document.getElementById('confirm-quit-btn');
@@ -107,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 6. Handle Scorecard Buttons (Play Again & Home)
     const scorecardRestartBtn = document.getElementById('scorecard-restart-btn');
     if (scorecardRestartBtn) {
         scorecardRestartBtn.addEventListener('click', () => {
@@ -132,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 7. Handle Move Buttons Selection
     const moveButtons = document.querySelectorAll('.move-btn');
     moveButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -155,10 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
-
-// ==========================================
-// SOCKET.IO EVENT LISTENERS
-// ==========================================
 
 socket.on('waiting_for_opponent', (data) => {
     let timeLeft = data.duration || 120;
@@ -216,11 +197,7 @@ socket.on('show_scorecard', (data) => {
     showMatchOverModal(data);
 });
 
-// ==========================================
-// ANIMATION ENGINE (CACHED)
-// ==========================================
-
-function loadAssetSequence(actor, action, totalFrames) {
+function loadAssetSequence(actor, action) {
     if (assetCache[actor] && assetCache[actor][action]) {
         return assetCache[actor][action];
     }
@@ -229,8 +206,8 @@ function loadAssetSequence(actor, action, totalFrames) {
 
 function startIdleAnimations() {
     isAnimating = false;
-    const playerFrames = loadAssetSequence('player', 'idle', 15);
-    const opponentFrames = loadAssetSequence('opponent', 'idle', 15);
+    const playerFrames = loadAssetSequence('player', 'idle');
+    const opponentFrames = loadAssetSequence('opponent', 'idle');
 
     const playerImg = document.getElementById('player-hand-img');
     const opponentImg = document.getElementById('opponent-hand-img');
@@ -245,10 +222,6 @@ function startIdleAnimations() {
         }, 65);
     }
 }
-
-// ==========================================
-// GAME SCREEN INITIALIZATION & ROUND FLOW
-// ==========================================
 
 function transitionToGameScreen(data) {
     const matchModal = document.getElementById('match-over-modal');
@@ -298,7 +271,11 @@ function startMyHudTimer(duration = 10, onTimeout = null) {
     
     if (timerContainer) timerContainer.classList.remove('hidden');
 
+    if (timerValEl) timerValEl.textContent = timeLeft;
+    if (timerPathEl) timerPathEl.style.strokeDasharray = `100, 100`;
+
     activeTimerInterval = setInterval(() => {
+        timeLeft--;
         if (timerValEl) timerValEl.textContent = timeLeft;
         if (timerPathEl) {
             const percentage = (timeLeft / duration) * 100;
@@ -309,7 +286,6 @@ function startMyHudTimer(duration = 10, onTimeout = null) {
             stopAllTimers();
             if (typeof onTimeout === 'function') onTimeout();
         }
-        timeLeft--;
     }, 1000);
 }
 
@@ -323,7 +299,11 @@ function startOpponentHudTimer(duration = 10) {
     
     if (timerContainer) timerContainer.classList.remove('hidden');
 
+    if (timerValEl) timerValEl.textContent = timeLeft;
+    if (timerPathEl) timerPathEl.style.strokeDasharray = `100, 100`;
+
     activeTimerInterval = setInterval(() => {
+        timeLeft--;
         if (timerValEl) timerValEl.textContent = timeLeft;
         if (timerPathEl) {
             const percentage = (timeLeft / duration) * 100;
@@ -333,7 +313,6 @@ function startOpponentHudTimer(duration = 10) {
         if (timeLeft <= 0) {
             stopAllTimers();
         }
-        timeLeft--;
     }, 1000);
 }
 
@@ -390,8 +369,8 @@ function handleRoundResolution(data) {
         opponentMove = data.p1_move;
     }
 
-    const playerFrames = loadAssetSequence('player', playerMove, 41);
-    const opponentFrames = loadAssetSequence('opponent', opponentMove, 41);
+    const playerFrames = loadAssetSequence('player', playerMove);
+    const opponentFrames = loadAssetSequence('opponent', opponentMove);
 
     const playerImg = document.getElementById('player-hand-img');
     const opponentImg = document.getElementById('opponent-hand-img');
@@ -500,10 +479,6 @@ function triggerWinnerGlow(outcome) {
     }
 }
 
-// ==========================================
-// MODALS & SCORECARD
-// ==========================================
-
 function showWaitingModal() {
     const modal = document.getElementById('waiting-modal');
     modal.classList.remove('hidden');
@@ -567,6 +542,5 @@ function showMatchOverModal(data) {
         }
     }
 
-    // Explicitly reveal the modal overlay
     modal.classList.remove('hidden');
 }
