@@ -357,7 +357,7 @@ def cleanup_player_session(player_sid):
 def handle_disconnect():
     player_sid = request.sid #type: ignore
     cleanup_player_session(player_sid)
-
+    
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port, async_mode='eventlet')
