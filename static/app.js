@@ -35,7 +35,6 @@ function preloadAllAssets() {
                 const imgPath = `/static/assets/${actor}/${action}/${frameStr}.png`;
                 const img = new Image();
                 img.src = imgPath;
-                // Store the preloaded Image object reference in our cache
                 assetCache[actor][action].push(img);
             }
         });
@@ -43,7 +42,6 @@ function preloadAllAssets() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Preload all assets into memory cache immediately on load
     preloadAllAssets();
 
     // 1. Handle Game Mode selection buttons
@@ -144,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 stopAllTimers();
                 setMoveButtonsEnabled(false);
                 
-                // If we make a move first in PvP, start 10s timer on opponent's HUD (top-right)
                 if (selectedGameMode === 'pvp') {
                     startOpponentHudTimer(10);
                 }
@@ -160,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// SOCKET.IO EVENT LISTENERS FOR MATCHMAKING & ROUNDS
+// SOCKET.IO EVENT LISTENERS
 // ==========================================
 
 socket.on('waiting_for_opponent', (data) => {
@@ -190,16 +187,12 @@ socket.on('game_joined', (data) => {
 
     currentRoom = data.room;
     currentRole = data.role;
-
-    console.log("Successfully joined game room:", currentRoom, "Role:", currentRole);
     transitionToGameScreen(data);
 });
 
-// Triggered when opponent makes a move first in PvP -> timer starts on OUR HUD (bottom-left)
 socket.on('opponent_moved', (data) => {
     if (selectedGameMode === 'pvp') {
         startMyHudTimer(10, () => {
-            // Auto-submit fallback move on timeout
             const moves = ['rock', 'paper', 'scissor'];
             const randomMove = moves[Math.floor(Math.random() * moves.length)];
             stopAllTimers();
@@ -224,11 +217,10 @@ socket.on('show_scorecard', (data) => {
 });
 
 // ==========================================
-// ANIMATION ENGINE & HELPERS (20 FPS)
+// ANIMATION ENGINE (CACHED)
 // ==========================================
 
-function loadAssetSequence(actor, action) {
-    // Return preloaded Image elements directly from the memory cache
+function loadAssetSequence(actor, action, totalFrames) {
     if (assetCache[actor] && assetCache[actor][action]) {
         return assetCache[actor][action];
     }
@@ -237,8 +229,8 @@ function loadAssetSequence(actor, action) {
 
 function startIdleAnimations() {
     isAnimating = false;
-    const playerFrames = loadAssetSequence('player', 'idle');
-    const opponentFrames = loadAssetSequence('opponent', 'idle');
+    const playerFrames = loadAssetSequence('player', 'idle', 15);
+    const opponentFrames = loadAssetSequence('opponent', 'idle', 15);
 
     const playerImg = document.getElementById('player-hand-img');
     const opponentImg = document.getElementById('opponent-hand-img');
@@ -270,7 +262,6 @@ function transitionToGameScreen(data) {
     const playerRug = document.querySelector('.player-sprite-box .floor-rug');
     const opponentRug = document.querySelector('.opponent-sprite-box .floor-rug');
 
-    // Bottom HUD is ALWAYS You (local player), Top HUD is ALWAYS Opponent
     if (selectedGameMode === 'computer' || selectedGameMode === 'adaptive_ai') {
         playerNameEl.textContent = 'Player 1 (You)';
         if (playerRug) playerRug.className = 'floor-rug red-rug';
@@ -297,7 +288,6 @@ function transitionToGameScreen(data) {
     setMoveButtonsEnabled(true);
 }
 
-// Timer on OUR HUD (bottom-left) when opponent moves first
 function startMyHudTimer(duration = 10, onTimeout = null) {
     stopAllTimers();
     let timeLeft = duration;
@@ -323,7 +313,6 @@ function startMyHudTimer(duration = 10, onTimeout = null) {
     }, 1000);
 }
 
-// Timer on OPPONENT HUD (top-right) when we move first
 function startOpponentHudTimer(duration = 10) {
     stopAllTimers();
     let timeLeft = duration;
@@ -401,8 +390,8 @@ function handleRoundResolution(data) {
         opponentMove = data.p1_move;
     }
 
-    const playerFrames = loadAssetSequence('player', playerMove);
-    const opponentFrames = loadAssetSequence('opponent', opponentMove);
+    const playerFrames = loadAssetSequence('player', playerMove, 41);
+    const opponentFrames = loadAssetSequence('opponent', opponentMove, 41);
 
     const playerImg = document.getElementById('player-hand-img');
     const opponentImg = document.getElementById('opponent-hand-img');
@@ -512,7 +501,7 @@ function triggerWinnerGlow(outcome) {
 }
 
 // ==========================================
-// MODAL & SCORECARD HELPER FUNCTIONS
+// MODALS & SCORECARD
 // ==========================================
 
 function showWaitingModal() {
@@ -542,13 +531,13 @@ function showMatchOverModal(data) {
     const p1Losses = p2Wins;
     const p2Losses = p1Wins;
 
-    // Table Mapping: Row 1 is ALWAYS Player 1, Row 2 is ALWAYS Player 2 (or AI/Computer)
     const isP1 = (currentRole === 'p1');
     const row1Label = (selectedGameMode === 'pvp') 
         ? (isP1 ? 'Player 1 (You)' : 'Player 1') 
         : 'Player 1 (You)';
     
-    const opponentNameText = document.getElementById('opponent-name').textContent;
+    const opponentNameEl = document.getElementById('opponent-name');
+    const opponentNameText = opponentNameEl ? opponentNameEl.textContent : 'Opponent';
     const row2Label = (selectedGameMode === 'pvp')
         ? (!isP1 ? 'Player 2 (You)' : 'Player 2')
         : opponentNameText;
@@ -578,5 +567,6 @@ function showMatchOverModal(data) {
         }
     }
 
-    modal.classList.add('hidden');
+    // Explicitly reveal the modal overlay
+    modal.classList.remove('hidden');
 }
