@@ -16,7 +16,30 @@ let isAnimating = false;
 // Round history tracking for score pills
 let roundHistory = [];
 
+// ==========================================
+// IMAGE PRELOADER ENGINE
+// ==========================================
+function preloadAllAssets() {
+    const actors = ['player', 'opponent'];
+    const actions = ['idle', 'rock', 'paper', 'scissor'];
+    
+    actors.forEach(actor => {
+        actions.forEach(action => {
+            const totalFrames = (action === 'idle') ? 15 : 41;
+            for (let i = 0; i < totalFrames; i++) {
+                const frameStr = String(i).padStart(2, '0');
+                const imgPath = `/static/assets/${actor}/${action}/${frameStr}.png`;
+                const img = new Image();
+                img.src = imgPath;
+            }
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Preload all assets immediately on load
+    preloadAllAssets();
+
     // 1. Handle Game Mode selection buttons
     const modeButtons = document.querySelectorAll('.game-mode-btn');
     modeButtons.forEach(btn => {
