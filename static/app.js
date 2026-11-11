@@ -17,27 +17,33 @@ let isAnimating = false;
 let roundHistory = [];
 
 // ==========================================
-// IMAGE PRELOADER ENGINE
+// CENTRALIZED ASSET CACHE & PRELOADER
 // ==========================================
+const assetCache = {};
+
 function preloadAllAssets() {
     const actors = ['player', 'opponent'];
     const actions = ['idle', 'rock', 'paper', 'scissor'];
     
     actors.forEach(actor => {
+        assetCache[actor] = {};
         actions.forEach(action => {
+            assetCache[actor][action] = [];
             const totalFrames = (action === 'idle') ? 15 : 41;
             for (let i = 0; i < totalFrames; i++) {
                 const frameStr = String(i).padStart(2, '0');
                 const imgPath = `/static/assets/${actor}/${action}/${frameStr}.png`;
                 const img = new Image();
                 img.src = imgPath;
+                // Store the preloaded Image object reference in our cache
+                assetCache[actor][action].push(img);
             }
         });
     });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Preload all assets immediately on load
+    // Preload all assets into memory cache immediately on load
     preloadAllAssets();
 
     // 1. Handle Game Mode selection buttons
@@ -221,29 +227,28 @@ socket.on('show_scorecard', (data) => {
 // ANIMATION ENGINE & HELPERS (20 FPS)
 // ==========================================
 
-function loadAssetSequence(actor, action, totalFrames) {
-    const frames = [];
-    for (let i = 0; i < totalFrames; i++) {
-        const frameStr = String(i).padStart(2, '0');
-        frames.push(`/static/assets/${actor}/${action}/${frameStr}.png`);
+function loadAssetSequence(actor, action) {
+    // Return preloaded Image elements directly from the memory cache
+    if (assetCache[actor] && assetCache[actor][action]) {
+        return assetCache[actor][action];
     }
-    return frames;
+    return [];
 }
 
 function startIdleAnimations() {
     isAnimating = false;
-    const playerFrames = loadAssetSequence('player', 'idle', 15);
-    const opponentFrames = loadAssetSequence('opponent', 'idle', 15);
+    const playerFrames = loadAssetSequence('player', 'idle');
+    const opponentFrames = loadAssetSequence('opponent', 'idle');
 
     const playerImg = document.getElementById('player-hand-img');
     const opponentImg = document.getElementById('opponent-hand-img');
 
-    if (playerImg && opponentImg) {
+    if (playerImg && opponentImg && playerFrames.length > 0) {
         let idx = 0;
         if (currentAnimationInterval) clearInterval(currentAnimationInterval);
         currentAnimationInterval = setInterval(() => {
-            playerImg.src = playerFrames[idx];
-            opponentImg.src = opponentFrames[idx];
+            playerImg.src = playerFrames[idx].src;
+            opponentImg.src = opponentFrames[idx].src;
             idx = (idx + 1) % playerFrames.length;
         }, 65);
     }
@@ -396,16 +401,16 @@ function handleRoundResolution(data) {
         opponentMove = data.p1_move;
     }
 
-    const playerFrames = loadAssetSequence('player', playerMove, 41);
-    const opponentFrames = loadAssetSequence('opponent', opponentMove, 41);
+    const playerFrames = loadAssetSequence('player', playerMove);
+    const opponentFrames = loadAssetSequence('opponent', opponentMove);
 
     const playerImg = document.getElementById('player-hand-img');
     const opponentImg = document.getElementById('opponent-hand-img');
 
     let frameIndex = 0;
     currentAnimationInterval = setInterval(() => {
-        if (playerImg) playerImg.src = playerFrames[frameIndex];
-        if (opponentImg) opponentImg.src = opponentFrames[frameIndex];
+        if (playerImg && playerFrames[frameIndex]) playerImg.src = playerFrames[frameIndex].src;
+        if (opponentImg && opponentFrames[frameIndex]) opponentImg.src = opponentFrames[frameIndex].src;
         frameIndex++;
 
         if (frameIndex >= playerFrames.length) {
@@ -573,5 +578,5 @@ function showMatchOverModal(data) {
         }
     }
 
-    modal.classList.remove('hidden');
+    modal.classList.add('hidden');
 }
